@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BrightBudget — Paycheck & Bills</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+* { box-sizing: border-box; }
+:root{
+  --bg: #0f1226;
+  --card: #191c36;
+  --text: #f6f7fb;
+  --muted:#9aa0c3;
+  --good:#1ec28b;
+  --bad:#ff5a7a;
+  --a:#6c7bff;
+  --b:#ffb86b;
+  --accent:#b16cff;
+}
+html, body { height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(1000px 600px at -10% -10%, #2b2f55 0%, transparent 60%),
+    radial-gradient(800px 600px at 110% 0%, #3e245f 0%, transparent 60%),
+    radial-gradient(700px 600px at 50% 120%, #26395e 0%, transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.app-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 20px clamp(16px,4vw,48px);
+}
+h1{ margin:0; font-weight:800; letter-spacing:0.5px; }
+.month-toggle{ display:flex; align-items:center; gap:12px; }
+.month-toggle button{
+  background: var(--card); color:var(--text); border:1px solid #2b2f55;
+  width:36px; height:36px; border-radius:10px; cursor:pointer;
+}
+#monthLabel{ font-weight:600; }
+
+.grid{
+  display:grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(420px, 1.4fr) minmax(320px, 1fr);
+  gap: 16px;
+  padding: 0 clamp(16px,4vw,48px) 32px;
+}
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(6px);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.controls .slider-row{ display:grid; grid-template-columns: 140px 1fr 80px; align-items:center; gap:12px; margin:10px 0; }
+.controls input[type="range"]{ width:100%; }
+.controls .inline{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
+.value{ font-weight:700; }
+
+.kpis .kpi-grid{
+  display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;
+}
+.kpi{ background: var(--card); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.08); }
+.kpi-label{ color:var(--muted); font-size:12px; }
+.kpi-value{ font-size:22px; font-weight:800; margin-top:6px; }
+.kpi-value.good{ color: var(--good); }
+.kpi-value.bad{ color: var(--bad); }
+
+.tabs{ display:flex; gap:8px; }
+.tab{ background: var(--card); color:var(--text); border:1px solid #2b2f55; padding:8px 12px; border-radius:10px; cursor:pointer; }
+.tab.active{ background: linear-gradient(180deg, var(--accent), #6c7bff); border:none; }
+
+.table-actions{ display:flex; align-items:center; gap:12px; margin:12px 0; }
+.table-actions .spacer{ flex:1; }
+#addBillBtn{ background: linear-gradient(180deg, #ff9ad5, #b16cff); border:none; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700; }
+.switch{ display:flex; align-items:center; gap:8px; color:var(--muted); }
+
+table{ width:100%; border-collapse: collapse; }
+thead th, tfoot td{ text-align:left; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.1); padding:8px; }
+tbody td{ padding:8px; border-bottom:1px dashed rgba(255,255,255,0.06); }
+tbody tr:hover{ background: rgba(255,255,255,0.03); }
+.badge{ padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+.badge.A{ background: rgba(108,123,255,0.2); color:#cfd4ff; }
+.badge.B{ background: rgba(255,184,107,0.2); color:#ffe0c2; }
+td.actions{ text-align:right; }
+.actions button{ background:transparent; border:1px solid rgba(255,255,255,0.15); color:var(--text); padding:6px 8px; border-radius:8px; cursor:pointer; margin-left:8px; }
+tfoot #runningTotal{ font-weight:800; text-align:right; }
+
+.chart-wrap{ background: var(--card); border-radius:12px; padding:10px; border:1px solid rgba(255,255,255,0.08); margin-top:10px; }
+
+dialog{ border:none; border-radius:16px; padding:0; overflow:hidden; }
+dialog::backdrop{ background: rgba(0,0,0,0.6); }
+#billForm{ padding:18px; background: var(--card); color:var(--text); display:grid; gap:10px; width:min(90vw,420px); }
+#billForm h3{ margin:0 0 6px; }
+#billForm label{ display:grid; gap:6px; font-size:14px; color:var(--muted); }
+#billForm input, #billForm select{ padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:#10122b; color:var(--text); }
+#billForm menu{ display:flex; justify-content:flex-end; gap:10px; margin:12px 0 0; padding:0; }
+#billForm button{ padding:10px 14px; border-radius:10px; border:none; font-weight:700; }
+#billForm .ghost{ background: transparent; border:1px solid rgba(255,255,255,0.15); color:var(--text); }
+#billForm #saveBill{ background: linear-gradient(180deg, #6c7bff, #b16cff); color:#fff; }
+
+.app-footer{ text-align:center; color:var(--muted); padding:24px; }
+@media (max-width: 1100px){
+  .grid{ grid-template-columns: 1fr; }
+  .kpis .kpi-grid{ grid-template-columns: repeat(2, 1fr); }
+}
+
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>BrightBudget</h1>
+    <div class="month-toggle">
+      <button id="prevMonth" aria-label="Previous Month">‹</button>
+      <span id="monthLabel"></span>
+      <button id="nextMonth" aria-label="Next Month">›</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Controls -->
+    <section class="card controls">
+      <h2>Income Sliders</h2>
+      <div class="slider-row">
+        <label for="paycheckA">Paycheck A</label>
+        <input id="paycheckA" type="range" min="0" max="5000" step="50"/>
+        <span class="value" id="paycheckAVal">$0</span>
+      </div>
+      <div class="slider-row">
+        <label for="paycheckB">Paycheck B</label>
+        <input id="paycheckB" type="range" min="0" max="5000" step="50"/>
+        <span class="value" id="paycheckBVal">$0</span>
+      </div>
+      <div class="inline">
+        <div>
+          <label for="growth">Forecast growth / month</label>
+          <input id="growth" type="range" min="-10" max="10" step="0.5"/>
+          <span class="value" id="growthVal">0%</span>
+        </div>
+        <div>
+          <label for="forecastMonths">Forecast months</label>
+          <input id="forecastMonths" type="range" min="1" max="12" step="1"/>
+          <span class="value" id="forecastMonthsVal">6</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Surplus cards -->
+    <section class="card kpis">
+      <h2>This Month Overview</h2>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Total Income</div>
+          <div class="kpi-value" id="kpiIncome">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Bills (A)</div>
+          <div class="kpi-value bad" id="kpiBillsA">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Bills (B)</div>
+          <div class="kpi-value bad" id="kpiBillsB">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Surplus (A)</div>
+          <div class="kpi-value good" id="kpiSurplusA">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Surplus (B)</div>
+          <div class="kpi-value good" id="kpiSurplusB">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Total Surplus</div>
+          <div class="kpi-value good" id="kpiSurplusTotal">$0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bills tables -->
+    <section class="card bills">
+      <div class="tabs">
+        <button class="tab active" data-tab="A">Paycheck A</button>
+        <button class="tab" data-tab="B">Paycheck B</button>
+      </div>
+
+      <div class="table-actions">
+        <button id="addBillBtn">+ Add Bill</button>
+        <div class="spacer"></div>
+        <label class="switch">
+          <input id="repeatMonthly" type="checkbox" checked />
+          <span>Repeat monthly</span>
+        </label>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Bill</th>
+            <th>Due Date</th>
+            <th>Amount</th>
+            <th>Check</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="billsBody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">Running Total (after bills)</td>
+            <td colspan="3" id="runningTotal">$0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+
+    <!-- Charts -->
+    <section class="card charts">
+      <h2>Visuals</h2>
+      <div class="chart-wrap">
+        <canvas id="barChart" height="140"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="forecastChart" height="160"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add/Edit Bill Modal -->
+  <dialog id="billModal">
+    <form id="billForm" method="dialog">
+      <h3 id="modalTitle">Add Bill</h3>
+      <label>Bill name
+        <input type="text" id="billName" required placeholder="Rent, Phone, etc."/>
+      </label>
+      <label>Due date (day of month)
+        <input type="number" id="billDue" min="1" max="31" required/>
+      </label>
+      <label>Amount ($)
+        <input type="number" id="billAmount" min="0" step="0.01" required/>
+      </label>
+      <label>Assigned paycheck
+        <select id="billCheck">
+          <option value="A">A</option>
+          <option value="B">B</option>
+        </select>
+      </label>
+      <menu>
+        <button value="cancel" type="reset" class="ghost">Cancel</button>
+        <button id="saveBill" value="default">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <footer class="app-footer">
+    <small>Data is saved locally to your browser. No logins, no servers.</small>
+  </footer>
+
+  <script>
+// BrightBudget — Single-file SPA logic
+const $ = (q) => document.querySelector(q);
+const $$ = (q) => Array.from(document.querySelectorAll(q));
+
+// --- State ---
+const storeKey = 'brightBudget:v1';
+const initialData = {
+  settings: {
+    paycheckA: 1750,
+    paycheckB: 1750,
+    monthOffset: 0,
+    growthPct: 0,
+    forecastMonths: 6,
+    repeatMonthly: true
+  },
+  bills: [
+    // sample data
+    { id: crypto.randomUUID(), name:'Rent', due:1, amount:1475, check:'A' },
+    { id: crypto.randomUUID(), name:'Phone', due:7, amount:69, check:'A' },
+    { id: crypto.randomUUID(), name:'Internet', due:12, amount:70, check:'B' },
+    { id: crypto.randomUUID(), name:'Groceries', due:15, amount:200, check:'B' },
+  ]
+};
+let data = load();
+
+function load(){
+  try {
+    const raw = localStorage.getItem(storeKey);
+    if(!raw){ localStorage.setItem(storeKey, JSON.stringify(initialData)); return structuredClone(initialData); }
+    return JSON.parse(raw);
+  } catch(e){
+    console.warn('Local load failed, using defaults', e);
+    return structuredClone(initialData);
+  }
+}
+function save(){ localStorage.setItem(storeKey, JSON.stringify(data)); }
+
+// --- UI bindings ---
+const paycheckAInput = $('#paycheckA');
+const paycheckBInput = $('#paycheckB');
+const paycheckAVal = $('#paycheckAVal');
+const paycheckBVal = $('#paycheckBVal');
+const growth = $('#growth');
+const growthVal = $('#growthVal');
+const forecastMonths = $('#forecastMonths');
+const forecastMonthsVal = $('#forecastMonthsVal');
+const monthLabel = $('#monthLabel');
+const prevMonth = $('#prevMonth');
+const nextMonth = $('#nextMonth');
+const repeatMonthly = $('#repeatMonthly');
+const billsBody = $('#billsBody');
+const runningTotal = $('#runningTotal');
+const addBillBtn = $('#addBillBtn');
+
+const kpiIncome = $('#kpiIncome');
+const kpiBillsA = $('#kpiBillsA');
+const kpiBillsB = $('#kpiBillsB');
+const kpiSurplusA = $('#kpiSurplusA');
+const kpiSurplusB = $('#kpiSurplusB');
+const kpiSurplusTotal = $('#kpiSurplusTotal');
+
+const billModal = $('#billModal');
+const billForm = $('#billForm');
+const modalTitle = $('#modalTitle');
+const billName = $('#billName');
+const billDue = $('#billDue');
+const billAmount = $('#billAmount');
+const billCheck = $('#billCheck');
+
+let editingId = null;
+
+// Tabs
+$$('.tab').forEach(btn => btn.addEventListener('click', () => {
+  $$('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBills();
+  renderRunningTotal();
+  renderCharts();
+}));
+
+// Inputs
+function setRange(input, value){ input.value = value; input.dispatchEvent(new Event('input',{bubbles:true})); }
+setRange(paycheckAInput, data.settings.paycheckA);
+setRange(paycheckBInput, data.settings.paycheckB);
+setRange(growth, data.settings.growthPct);
+setRange(forecastMonths, data.settings.forecastMonths);
+repeatMonthly.checked = data.settings.repeatMonthly;
+
+// events
+paycheckAInput.addEventListener('input', e => { data.settings.paycheckA = +e.target.value; paycheckAVal.textContent = fmtMoney(+e.target.value); save(); renderAll(); });
+paycheckBInput.addEventListener('input', e => { data.settings.paycheckB = +e.target.value; paycheckBVal.textContent = fmtMoney(+e.target.value); save(); renderAll(); });
+growth.addEventListener('input', e => { data.settings.growthPct = +e.target.value; growthVal.textContent = `${(+e.target.value).toFixed(1)}%`; save(); renderCharts(); });
+forecastMonths.addEventListener('input', e => { data.settings.forecastMonths = +e.target.value; forecastMonthsVal.textContent = `${e.target.value}`; save(); renderCharts(); });
+repeatMonthly.addEventListener('change', e => { data.settings.repeatMonthly = e.target.checked; save(); renderAll(); });
+
+prevMonth.addEventListener('click', ()=>{ data.settings.monthOffset--; save(); renderAll(); });
+nextMonth.addEventListener('click', ()=>{ data.settings.monthOffset++; save(); renderAll(); });
+
+addBillBtn.addEventListener('click', ()=>{ openBillModal(); });
+
+billForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const obj = {
+    id: editingId || crypto.randomUUID(),
+    name: billName.value.trim(),
+    due: +billDue.value,
+    amount: +billAmount.value,
+    check: billCheck.value
+  };
+  if(editingId){
+    const i = data.bills.findIndex(b=>b.id===editingId);
+    if(i>-1) data.bills[i]=obj;
+  } else {
+    data.bills.push(obj);
+  }
+  save();
+  billForm.reset();
+  editingId = null;
+  billModal.close();
+  renderAll();
+});
+
+function openBillModal(bill){
+  modalTitle.textContent = bill ? 'Edit Bill' : 'Add Bill';
+  if(bill){
+    editingId = bill.id;
+    billName.value = bill.name;
+    billDue.value = bill.due;
+    billAmount.value = bill.amount;
+    billCheck.value = bill.check;
+  } else {
+    editingId = null;
+    billForm.reset();
+  }
+  billModal.showModal();
+}
+
+// helpers
+function fmtMoney(v){ return v.toLocaleString(undefined, { style:'currency', currency:'USD' }); }
+function getMonthYear(offset){
+  const now = new Date();
+  const m = new Date(now.getFullYear(), now.getMonth()+offset, 1);
+  return { y: m.getFullYear(), m: m.getMonth() };
+}
+function monthName(y,m){ return new Date(y,m,1).toLocaleDateString(undefined, { month:'long', year:'numeric' }); }
+
+function currentBills(){
+  if(data.settings.repeatMonthly) return data.bills.slice().sort((a,b)=>a.due-b.due);
+  // if not repeating monthly, in a real app we'd filter by (y,m). For SPA demo, we show all.
+  return data.bills.slice().sort((a,b)=>a.due-b.due);
+}
+
+function paycheckFor(check){
+  return check==='A' ? data.settings.paycheckA : data.settings.paycheckB;
+}
+
+function totals(){
+  const bills = currentBills();
+  const sumA = bills.filter(b=>b.check==='A').reduce((s,b)=>s+b.amount,0);
+  const sumB = bills.filter(b=>b.check==='B').reduce((s,b)=>s+b.amount,0);
+  const surplusA = paycheckFor('A') - sumA;
+  const surplusB = paycheckFor('B') - sumB;
+  return { sumA, sumB, surplusA, surplusB, income: paycheckFor('A') + paycheckFor('B') };
+}
+
+// rendering
+function renderMonthLabel(){
+  const {y,m} = getMonthYear(data.settings.monthOffset);
+  monthLabel.textContent = monthName(y,m);
+}
+function renderSliders(){
+  paycheckAVal.textContent = fmtMoney(data.settings.paycheckA);
+  paycheckBVal.textContent = fmtMoney(data.settings.paycheckB);
+  growthVal.textContent = `${data.settings.growthPct.toFixed(1)}%`;
+  forecastMonthsVal.textContent = `${data.settings.forecastMonths}`;
+}
+function renderKPIs(){
+  const { sumA, sumB, surplusA, surplusB, income } = totals();
+  kpiIncome.textContent = fmtMoney(income);
+  kpiBillsA.textContent = fmtMoney(sumA);
+  kpiBillsB.textContent = fmtMoney(sumB);
+  kpiSurplusA.textContent = fmtMoney(surplusA);
+  kpiSurplusB.textContent = fmtMoney(surplusB);
+  kpiSurplusTotal.textContent = fmtMoney(surplusA + surplusB);
+}
+function activeCheck(){ return document.querySelector('.tab.active').dataset.tab; }
+
+function renderBills(){
+  const bills = currentBills();
+  const check = activeCheck();
+  const filtered = bills.filter(b=>b.check===check);
+  billsBody.innerHTML = '';
+  for(const b of filtered){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${b.name}</td>
+      <td>${b.due}</td>
+      <td>${fmtMoney(b.amount)}</td>
+      <td><span class="badge ${b.check}">${b.check}</span></td>
+      <td class="actions">
+        <button data-act="edit" data-id="${b.id}">Edit</button>
+        <button data-act="delete" data-id="${b.id}">Delete</button>
+      </td>
+    `;
+    billsBody.appendChild(tr);
+  }
+  billsBody.addEventListener('click', billTableActions);
+}
+function billTableActions(e){
+  const btn = e.target.closest('button'); if(!btn) return;
+  const id = btn.dataset.id;
+  const bill = data.bills.find(x=>x.id===id);
+  if(btn.dataset.act==='edit'){ openBillModal(bill); }
+  if(btn.dataset.act==='delete'){
+    data.bills = data.bills.filter(x=>x.id!==id);
+    save(); renderAll();
+  }
+}
+
+function renderRunningTotal(){
+  const check = activeCheck();
+  const bills = currentBills().filter(b=>b.check===check);
+  let balance = paycheckFor(check);
+  for(const b of bills){ balance -= b.amount; }
+  runningTotal.textContent = fmtMoney(balance);
+}
+
+// Charts
+let barChart, forecastChart;
+function renderCharts(){
+  const ctx1 = document.getElementById('barChart');
+  const ctx2 = document.getElementById('forecastChart');
+  const { sumA, sumB, surplusA, surplusB } = totals();
+  const incomeA = paycheckFor('A');
+  const incomeB = paycheckFor('B');
+
+  const barData = {
+    labels: ['Paycheck A', 'Paycheck B'],
+    datasets: [
+      { label: 'Bills', data: [sumA, sumB], backgroundColor: ['rgba(108,123,255,0.7)','rgba(255,184,107,0.7)'] },
+      { label: 'Surplus', data: [surplusA, surplusB], backgroundColor: ['rgba(30,194,139,0.8)','rgba(30,194,139,0.8)'] },
+    ]
+  };
+  const barOpts = {
+    responsive:true,
+    scales:{
+      y:{ beginAtZero:true, grid:{ color:'rgba(255,255,255,0.08)' } },
+      x:{ grid:{ display:false } }
+    },
+    plugins:{
+      tooltip:{ callbacks:{
+        footer:(items)=>{
+          const i = items[0].dataIndex;
+          const income = i===0?incomeA:incomeB;
+          return 'Income: ' + income.toLocaleString(undefined,{style:'currency',currency:'USD'});
+        }
+      }},
+      legend:{ labels:{ color:'#fff' } }
+    }
+  };
+  if(barChart){ barChart.data = barData; barChart.update(); }
+  else { barChart = new Chart(ctx1, { type:'bar', data: barData, options: barOpts }); }
+
+  // forecast
+  const months = data.settings.forecastMonths;
+  const growth = data.settings.growthPct / 100;
+  const baseIncome = incomeA + incomeB;
+  const baseBills = currentBills().reduce((s,b)=>s+b.amount,0);
+  const labels = [];
+  const series = [];
+  for(let i=0;i<months;i++){
+    const inc = baseIncome * Math.pow(1+growth, i);
+    const surplus = inc - baseBills;
+    series.push(Math.round(surplus));
+    const d = new Date(); d.setMonth(d.getMonth()+data.settings.monthOffset+i);
+    labels.push(d.toLocaleDateString(undefined, { month:'short' }));
+  }
+  const fData = {
+    labels,
+    datasets:[{ label:'Projected Surplus', data: series, fill:true, tension:0.35,
+      backgroundColor:'rgba(177,108,255,0.25)', borderColor:'#b16cff' }]
+  };
+  const fOpts = {
+    responsive:true,
+    scales:{
+      y:{ grid:{ color:'rgba(255,255,255,0.08)' } },
+      x:{ grid:{ display:false } }
+    },
+    plugins:{ legend:{ labels:{ color:'#fff' } } }
+  };
+  if(forecastChart){ forecastChart.data = fData; forecastChart.update(); }
+  else { forecastChart = new Chart(ctx2, { type:'line', data: fData, options: fOpts }); }
+}
+
+function renderAll(){
+  renderMonthLabel();
+  renderSliders();
+  renderBills();
+  renderRunningTotal();
+  renderKPIs();
+  renderCharts();
+}
+
+// init
+renderAll();
+
+</script>
+</body>
+</html>
